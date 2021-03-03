@@ -310,6 +310,30 @@ public Hash hashMulti (T...)(auto ref T args) nothrow @nogc @safe
         crypto_generichash_final(&state, hash[].ptr, Hash.sizeof);
     }
     trusted();
+    assert(hash == hashMulti2(args));
+    return hash;
+}
+
+public Hash hashMulti2 (T...)(auto ref T args) nothrow @nogc @safe
+{
+    Hash hash = void;
+    crypto_generichash_state state;
+
+    auto dg = () @trusted {
+         crypto_generichash_init(&state, null, 0, Hash.sizeof);
+        scope HashDg dg = (in ubyte[] data) @trusted {
+            crypto_generichash_update(&state, data.ptr, data.length);
+        };
+        return dg;
+    }();
+
+    static foreach (idx, _; args)
+        hashPart(args[idx], dg);
+    void trusted () @trusted
+    {
+        crypto_generichash_final(&state, hash[].ptr, Hash.sizeof);
+    }
+    trusted();
     return hash;
 }
 
